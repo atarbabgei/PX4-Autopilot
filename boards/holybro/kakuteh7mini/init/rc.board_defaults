@@ -40,3 +40,6 @@ param set-default COM_ARM_SDCARD 0
 
 # Don't try to log onto SD card
 param set-default SDLOG_MODE -1
+
+# Set the default board rotation to 6 (270 degrees)
+param set-default SENS_BOARD_ROT 6
