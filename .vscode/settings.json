@@ -128,5 +128,25 @@
         "yaml.schemas": {
                 "${workspaceFolder}/validation/module_schema.yaml": "${workspaceFolder}/src/modules/*/module.yaml"
         },
-        "ros.distro": "humble"
+        "ros.distro": "humble",
+        "python.autoComplete.extraPaths": [
+                "/home/atar/mocap_ros2_ws/install/px4_ros_com/local/lib/python3.10/dist-packages",
+                "/home/atar/mocap_ros2_ws/install/px4_offboard/lib/python3.10/site-packages",
+                "/home/atar/mocap_ros2_ws/install/mocap_to_px4/lib/python3.10/site-packages",
+                "/home/atar/mocap_ros2_ws/install/fake_visual_odometry_publisher/lib/python3.10/site-packages",
+                "/home/atar/mocap_ros2_ws/install/px4_msgs/local/lib/python3.10/dist-packages",
+                "/home/atar/mocap_ros2_ws/install/mocap_msgs/local/lib/python3.10/dist-packages",
+                "/opt/ros/humble/lib/python3.10/site-packages",
+                "/opt/ros/humble/local/lib/python3.10/dist-packages"
+        ],
+        "python.analysis.extraPaths": [
+                "/home/atar/mocap_ros2_ws/install/px4_ros_com/local/lib/python3.10/dist-packages",
+                "/home/atar/mocap_ros2_ws/install/px4_offboard/lib/python3.10/site-packages",
+                "/home/atar/mocap_ros2_ws/install/mocap_to_px4/lib/python3.10/site-packages",
+                "/home/atar/mocap_ros2_ws/install/fake_visual_odometry_publisher/lib/python3.10/site-packages",
+                "/home/atar/mocap_ros2_ws/install/px4_msgs/local/lib/python3.10/dist-packages",
+                "/home/atar/mocap_ros2_ws/install/mocap_msgs/local/lib/python3.10/dist-packages",
+                "/opt/ros/humble/lib/python3.10/site-packages",
+                "/opt/ros/humble/local/lib/python3.10/dist-packages"
+        ]
 }
