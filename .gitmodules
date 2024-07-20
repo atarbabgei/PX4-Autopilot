@@ -78,8 +78,8 @@
 	branch = px4
 [submodule "Tools/simulation/gz"]
 	path = Tools/simulation/gz
-	url = https://github.com/atarbabgei/PX4-gazebo-models
-	branch = sim_roller_drone
+	url = https://github.com/atarbabgei/PX4-gazebo-models.git
+	branch = rollerdrone
 [submodule "boards/modalai/voxl2/libfc-sensor-api"]
 	path = boards/modalai/voxl2/libfc-sensor-api
 	url = https://gitlab.com/voxl-public/voxl-sdk/core-libs/libfc-sensor-api.git
