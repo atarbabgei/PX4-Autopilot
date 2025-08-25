@@ -42,6 +42,7 @@
 
 #include <iostream>
 #include <string>
+#include <cstring>
 
 GZBridge::GZBridge(const std::string &world, const std::string &model_name) :
 	ModuleParams(nullptr),
@@ -270,64 +271,63 @@ void GZBridge::magnetometerCallback(const gz::msgs::Magnetometer &msg)
 
 void GZBridge::jointStateCallback(const gz::msgs::Model &msg)
 {
-	const uint64_t timestamp = hrt_absolute_time();
-
+	// Optimized for minimal latency - fast joint lookup and data extraction
+	static const char TARGET_JOINT_NAME[] = "propeller_guard_joint";
+	static constexpr size_t TARGET_JOINT_NAME_LEN = sizeof(TARGET_JOINT_NAME) - 1;
+	
+	// Pre-initialize with zeros for efficiency
 	wheel_encoders_s wheel_encoders{};
-	wheel_encoders.timestamp = timestamp;
+	wheel_encoders.timestamp = hrt_absolute_time();
+	wheel_encoders.wheel_angle[0] = 0.0f;
+	wheel_encoders.wheel_angle[1] = 0.0f; 
+	wheel_encoders.wheel_speed[0] = 0.0f;
+	wheel_encoders.wheel_speed[1] = 0.0f;
 
-	// Map joint state to wheel encoders format
-	// Using wheel_angle[0] for joint position and wheel_speed[0] for joint velocity
-	if (msg.joint_size() > 0) {
-		// Find the propeller_guard_joint in the message
-		for (int i = 0; i < msg.joint_size(); i++) {
-			const auto &joint = msg.joint(i);
-			if (joint.name() == "propeller_guard_joint") {
-				// Map to wheel encoder format (using index 0)
-				// Get position and velocity from the joint axis
-				if (joint.has_axis1()) {
-					wheel_encoders.wheel_angle[0] = static_cast<float>(joint.axis1().position());
-					wheel_encoders.wheel_speed[0] = static_cast<float>(joint.axis1().velocity());
-				}
-				// Leave index 1 as zero
-				wheel_encoders.wheel_angle[1] = 0.0f;
-				wheel_encoders.wheel_speed[1] = 0.0f;
-				break;
+	// Fast joint lookup with early exit
+	const int joint_count = msg.joint_size();
+	for (int i = 0; i < joint_count; ++i) {
+		const auto &joint = msg.joint(i);
+		const std::string &joint_name = joint.name();
+		
+		// Fast string comparison - check length first, then content
+		if (joint_name.length() == TARGET_JOINT_NAME_LEN && 
+		    memcmp(joint_name.c_str(), TARGET_JOINT_NAME, TARGET_JOINT_NAME_LEN) == 0) {
+			
+			// Direct data extraction with minimal checks
+			if (joint.has_axis1()) {
+				wheel_encoders.wheel_angle[0] = static_cast<float>(joint.axis1().position());
+				wheel_encoders.wheel_speed[0] = static_cast<float>(joint.axis1().velocity());
 			}
+			break; // Early exit - found our joint
 		}
 	}
 
+	// Immediate publish - no buffering
 	_wheel_encoders_pub.publish(wheel_encoders);
 }
 
 void GZBridge::forceTorqueCallback(const gz::msgs::Wrench &msg)
 {
-	const uint64_t timestamp = hrt_absolute_time();
-
-	// Scaling factors (1.0 = pass-through, adjust as needed)
+	// Optimized for minimal latency - no dynamic allocations or string operations
 	static constexpr float FORCE_SCALE = 1.0f;   // Force scaling factor
-	// static constexpr float TORQUE_SCALE = 1.0f;  // Torque scaling factor
+	
+	// Pre-calculated constant name to avoid string operations
+	static constexpr char FORCE_NAME[10] = {'p','g','_','f','o','r','c','e','\0','\0'};
 
-	// Extract and scale force components
+	// Extract and scale force components with minimal overhead
 	debug_vect_s force_debug{};
-	force_debug.timestamp = timestamp;
-	strncpy(force_debug.name, "pg_force", sizeof(force_debug.name) - 1);
-	force_debug.name[sizeof(force_debug.name) - 1] = '\0';
+	force_debug.timestamp = hrt_absolute_time();
+	
+	// Fast memory copy instead of strncpy
+	memcpy(force_debug.name, FORCE_NAME, sizeof(force_debug.name));
+	
+	// Direct assignment - compiler will optimize
 	force_debug.x = static_cast<float>(msg.force().x()) * FORCE_SCALE;
 	force_debug.y = static_cast<float>(msg.force().y()) * FORCE_SCALE;
 	force_debug.z = static_cast<float>(msg.force().z()) * FORCE_SCALE;
 
+	// Immediate publish - no buffering
 	_propeller_guard_force_pub.publish(force_debug);
-
-	// TODO: Add torque support later when needed
-	// Extract and scale torque components
-	// debug_vect_s torque_debug{};
-	// torque_debug.timestamp = timestamp;
-	// strncpy(torque_debug.name, "pg_torque", sizeof(torque_debug.name) - 1);
-	// torque_debug.name[sizeof(torque_debug.name) - 1] = '\0';
-	// torque_debug.x = static_cast<float>(msg.torque().x()) * TORQUE_SCALE;
-	// torque_debug.y = static_cast<float>(msg.torque().y()) * TORQUE_SCALE;
-	// torque_debug.z = static_cast<float>(msg.torque().z()) * TORQUE_SCALE;
-	// _propeller_guard_torque_pub.publish(torque_debug);
 }
 
 void GZBridge::barometerCallback(const gz::msgs::FluidPressure &msg)

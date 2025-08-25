@@ -146,7 +146,7 @@ private:
 	uORB::PublicationMulti<vehicle_odometry_s>    _visual_odometry_pub{ORB_ID(vehicle_visual_odometry)};
 	uORB::PublicationMulti<sensor_optical_flow_s> _optical_flow_pub{ORB_ID(sensor_optical_flow)};
 	uORB::Publication<wheel_encoders_s>           _wheel_encoders_pub{ORB_ID(wheel_encoders)};
-	uORB::Publication<debug_vect_s>  _propeller_guard_force_pub{ORB_ID(debug_vect)};
+	uORB::PublicationMulti<debug_vect_s>  _propeller_guard_force_pub{ORB_ID(debug_vect)};
 	// uORB::Publication<debug_vect_s>  _propeller_guard_torque_pub{ORB_ID(debug_vect)};
 
 	GZMixingInterfaceESC   _mixing_interface_esc{_node};
