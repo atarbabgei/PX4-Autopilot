@@ -311,8 +311,8 @@ void GZBridge::forceTorqueCallback(const gz::msgs::Wrench &msg)
 	// Optimized for minimal latency - no dynamic allocations or string operations
 	static constexpr float FORCE_SCALE = 1.0f;   // Force scaling factor
 	
-	// Pre-calculated constant name to avoid string operations
-	static constexpr char FORCE_NAME[10] = {'p','g','_','f','o','r','c','e','\0','\0'};
+	// Simple name identifier: "0" for force data
+	static constexpr char FORCE_NAME[10] = {'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0'};
 
 	// Extract and scale force components with minimal overhead
 	debug_vect_s force_debug{};
