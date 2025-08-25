@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# @name Gazebo x500 passive rotating prop
+#
+# @type Quadrotor
+#
+
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_passive_rotating_prop}
+
+. ${R}etc/init.d-posix/airframes/4001_gz_x500
