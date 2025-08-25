@@ -159,6 +159,13 @@ int GZBridge::init()
 		PX4_WARN("failed to subscribe to %s", joint_state_topic.c_str());
 	}
 
+	// Force/Torque: /propeller_guard_joint/force_torque
+	std::string force_torque_topic = "/propeller_guard_joint/force_torque";
+
+	if (!_node.Subscribe(force_torque_topic, &GZBridge::forceTorqueCallback, this)) {
+		PX4_WARN("failed to subscribe to %s", force_torque_topic.c_str());
+	}
+
 	if (!_mixing_interface_esc.init(_model_name)) {
 		PX4_ERR("failed to init ESC output");
 		return PX4_ERROR;
@@ -290,6 +297,37 @@ void GZBridge::jointStateCallback(const gz::msgs::Model &msg)
 	}
 
 	_wheel_encoders_pub.publish(wheel_encoders);
+}
+
+void GZBridge::forceTorqueCallback(const gz::msgs::Wrench &msg)
+{
+	const uint64_t timestamp = hrt_absolute_time();
+
+	// Scaling factors (1.0 = pass-through, adjust as needed)
+	static constexpr float FORCE_SCALE = 1.0f;   // Force scaling factor
+	// static constexpr float TORQUE_SCALE = 1.0f;  // Torque scaling factor
+
+	// Extract and scale force components
+	debug_vect_s force_debug{};
+	force_debug.timestamp = timestamp;
+	strncpy(force_debug.name, "pg_force", sizeof(force_debug.name) - 1);
+	force_debug.name[sizeof(force_debug.name) - 1] = '\0';
+	force_debug.x = static_cast<float>(msg.force().x()) * FORCE_SCALE;
+	force_debug.y = static_cast<float>(msg.force().y()) * FORCE_SCALE;
+	force_debug.z = static_cast<float>(msg.force().z()) * FORCE_SCALE;
+
+	_propeller_guard_force_pub.publish(force_debug);
+
+	// TODO: Add torque support later when needed
+	// Extract and scale torque components
+	// debug_vect_s torque_debug{};
+	// torque_debug.timestamp = timestamp;
+	// strncpy(torque_debug.name, "pg_torque", sizeof(torque_debug.name) - 1);
+	// torque_debug.name[sizeof(torque_debug.name) - 1] = '\0';
+	// torque_debug.x = static_cast<float>(msg.torque().x()) * TORQUE_SCALE;
+	// torque_debug.y = static_cast<float>(msg.torque().y()) * TORQUE_SCALE;
+	// torque_debug.z = static_cast<float>(msg.torque().z()) * TORQUE_SCALE;
+	// _propeller_guard_torque_pub.publish(torque_debug);
 }
 
 void GZBridge::barometerCallback(const gz::msgs::FluidPressure &msg)

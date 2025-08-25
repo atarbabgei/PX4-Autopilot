@@ -83,6 +83,12 @@ publications:
   - topic: /fmu/out/wheel_encoders
     type: px4_msgs::msg::WheelEncoders
 
+  - topic: /fmu/out/debug_vect
+    type: px4_msgs::msg::DebugVect
+
+  # - topic: /fmu/out/propeller_guard_joint/torque
+  #   type: px4_msgs::msg::DebugVect
+
 # Create uORB::Publication
 subscriptions:
   - topic: /fmu/in/register_ext_component_request
