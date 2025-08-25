@@ -152,6 +152,13 @@ int GZBridge::init()
 		return PX4_ERROR;
 	}
 
+	// Joint state: /propeller_guard_joint/joint_state
+	std::string joint_state_topic = "/propeller_guard_joint/joint_state";
+
+	if (!_node.Subscribe(joint_state_topic, &GZBridge::jointStateCallback, this)) {
+		PX4_WARN("failed to subscribe to %s", joint_state_topic.c_str());
+	}
+
 	if (!_mixing_interface_esc.init(_model_name)) {
 		PX4_ERR("failed to init ESC output");
 		return PX4_ERROR;
@@ -252,6 +259,37 @@ void GZBridge::magnetometerCallback(const gz::msgs::Magnetometer &msg)
 	report.z = msg.field_tesla().z();
 
 	_sensor_mag_pub.publish(report);
+}
+
+void GZBridge::jointStateCallback(const gz::msgs::Model &msg)
+{
+	const uint64_t timestamp = hrt_absolute_time();
+
+	wheel_encoders_s wheel_encoders{};
+	wheel_encoders.timestamp = timestamp;
+
+	// Map joint state to wheel encoders format
+	// Using wheel_angle[0] for joint position and wheel_speed[0] for joint velocity
+	if (msg.joint_size() > 0) {
+		// Find the propeller_guard_joint in the message
+		for (int i = 0; i < msg.joint_size(); i++) {
+			const auto &joint = msg.joint(i);
+			if (joint.name() == "propeller_guard_joint") {
+				// Map to wheel encoder format (using index 0)
+				// Get position and velocity from the joint axis
+				if (joint.has_axis1()) {
+					wheel_encoders.wheel_angle[0] = static_cast<float>(joint.axis1().position());
+					wheel_encoders.wheel_speed[0] = static_cast<float>(joint.axis1().velocity());
+				}
+				// Leave index 1 as zero
+				wheel_encoders.wheel_angle[1] = 0.0f;
+				wheel_encoders.wheel_speed[1] = 0.0f;
+				break;
+			}
+		}
+	}
+
+	_wheel_encoders_pub.publish(wheel_encoders);
 }
 
 void GZBridge::barometerCallback(const gz::msgs::FluidPressure &msg)

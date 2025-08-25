@@ -119,6 +119,7 @@ private:
 	void laserScanCallback(const gz::msgs::LaserScan &msg);
 	void opticalFlowCallback(const px4::msgs::OpticalFlow &msg);
 	void magnetometerCallback(const gz::msgs::Magnetometer &msg);
+	void jointStateCallback(const gz::msgs::Model &msg);
 
 	static void rotateQuaternion(gz::math::Quaterniond &q_FRD_to_NED, const gz::math::Quaterniond q_FLU_to_ENU);
 
@@ -141,7 +142,7 @@ private:
 	uORB::PublicationMulti<sensor_mag_s>          _sensor_mag_pub{ORB_ID(sensor_mag)};
 	uORB::PublicationMulti<vehicle_odometry_s>    _visual_odometry_pub{ORB_ID(vehicle_visual_odometry)};
 	uORB::PublicationMulti<sensor_optical_flow_s> _optical_flow_pub{ORB_ID(sensor_optical_flow)};
-
+	uORB::Publication<wheel_encoders_s>           _wheel_encoders_pub{ORB_ID(wheel_encoders)};
 
 	GZMixingInterfaceESC   _mixing_interface_esc{_node};
 	GZMixingInterfaceServo _mixing_interface_servo{_node};

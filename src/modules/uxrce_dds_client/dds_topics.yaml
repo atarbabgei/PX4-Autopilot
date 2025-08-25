@@ -80,6 +80,9 @@ publications:
   - topic: /fmu/out/home_position
     type: px4_msgs::msg::HomePosition
 
+  - topic: /fmu/out/wheel_encoders
+    type: px4_msgs::msg::WheelEncoders
+
 # Create uORB::Publication
 subscriptions:
   - topic: /fmu/in/register_ext_component_request
