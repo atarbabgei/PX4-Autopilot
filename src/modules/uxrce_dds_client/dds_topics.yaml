@@ -86,6 +86,9 @@ publications:
   - topic: /fmu/out/debug_vect
     type: px4_msgs::msg::DebugVect
 
+  - topic: /fmu/out/debug_value
+    type: px4_msgs::msg::DebugValue
+
   # - topic: /fmu/out/propeller_guard_joint/torque
   #   type: px4_msgs::msg::DebugVect
 

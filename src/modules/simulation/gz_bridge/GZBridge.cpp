@@ -167,6 +167,14 @@ int GZBridge::init()
 		PX4_WARN("failed to subscribe to %s", force_torque_topic.c_str());
 	}
 
+	// Contact sensor: /world/$WORLD/model/$MODEL/link/propeller_guard/sensor/propeller_guard_contact_sensor/contact
+	std::string contact_topic = "/world/" + _world_name + "/model/" + _model_name + 
+				    "/link/propeller_guard/sensor/propeller_guard_contact_sensor/contact";
+
+	if (!_node.Subscribe(contact_topic, &GZBridge::contactCallback, this)) {
+		PX4_WARN("failed to subscribe to %s", contact_topic.c_str());
+	}
+
 	if (!_mixing_interface_esc.init(_model_name)) {
 		PX4_ERR("failed to init ESC output");
 		return PX4_ERROR;
@@ -328,6 +336,42 @@ void GZBridge::forceTorqueCallback(const gz::msgs::Wrench &msg)
 
 	// Immediate publish - no buffering
 	_propeller_guard_force_pub.publish(force_debug);
+}
+
+void GZBridge::contactCallback(const gz::msgs::Contacts &msg)
+{
+	// Process contact data and calculate direction angle
+	if (msg.contact_size() > 0) {
+		const auto &contact = msg.contact(0);  // Get first contact
+		
+		// Get contact position (world coordinates)
+		if (contact.position_size() > 0) {
+			const auto &contact_pos = contact.position(0);  // Position on propeller guard
+			
+			// Extract contact coordinates
+			double contact_x = contact_pos.x();
+			double contact_y = contact_pos.y();
+			
+			// Calculate angle relative to propeller guard center
+			// Propeller guard center is at drone position + (0, 0, 0.1) in base_link frame
+			// For angle calculation, we use the Y-X plane (horizontal plane)
+			double angle_rad = atan2(contact_y, contact_x);
+			double angle_deg = angle_rad * 180.0 / M_PI;
+			
+			// Normalize angle to [0, 360) degrees
+			if (angle_deg < 0) {
+				angle_deg += 360.0;
+			}
+			
+			// Publish contact angle as debug value
+			debug_value_s contact_debug{};
+			contact_debug.timestamp = hrt_absolute_time();
+			contact_debug.ind = 0;  // Index 0 for contact angle
+			contact_debug.value = static_cast<float>(angle_deg);
+			
+			_propeller_guard_contact_pub.publish(contact_debug);
+		}
+	}
 }
 
 void GZBridge::barometerCallback(const gz::msgs::FluidPressure &msg)

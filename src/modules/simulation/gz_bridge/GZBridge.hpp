@@ -67,6 +67,7 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/debug_vect.h>
+#include <uORB/topics/debug_value.h>
 
 #include <gz/math.hh>
 #include <gz/msgs.hh>
@@ -81,6 +82,7 @@
 #include <gz/msgs/stringmsg.pb.h>
 #include <gz/msgs/scene.pb.h>
 #include <gz/msgs/wrench.pb.h>
+#include <gz/msgs/contacts.pb.h>
 // Custom PX4 proto
 #include <opticalflow.pb.h>
 
@@ -123,6 +125,7 @@ private:
 	void magnetometerCallback(const gz::msgs::Magnetometer &msg);
 	void jointStateCallback(const gz::msgs::Model &msg);
 	void forceTorqueCallback(const gz::msgs::Wrench &msg);
+	void contactCallback(const gz::msgs::Contacts &msg);
 
 	static void rotateQuaternion(gz::math::Quaterniond &q_FRD_to_NED, const gz::math::Quaterniond q_FLU_to_ENU);
 
@@ -147,6 +150,7 @@ private:
 	uORB::PublicationMulti<sensor_optical_flow_s> _optical_flow_pub{ORB_ID(sensor_optical_flow)};
 	uORB::Publication<wheel_encoders_s>           _wheel_encoders_pub{ORB_ID(wheel_encoders)};
 	uORB::PublicationMulti<debug_vect_s>  _propeller_guard_force_pub{ORB_ID(debug_vect)};
+	uORB::Publication<debug_value_s>             _propeller_guard_contact_pub{ORB_ID(debug_value)};
 	// uORB::Publication<debug_vect_s>  _propeller_guard_torque_pub{ORB_ID(debug_vect)};
 
 	GZMixingInterfaceESC   _mixing_interface_esc{_node};
