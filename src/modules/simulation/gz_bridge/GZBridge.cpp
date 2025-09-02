@@ -352,22 +352,21 @@ void GZBridge::contactCallback(const gz::msgs::Contacts &msg)
 			double contact_x = contact_pos.x();
 			double contact_y = contact_pos.y();
 			
-			// Calculate angle relative to propeller guard center
-			// Propeller guard center is at drone position + (0, 0, 0.1) in base_link frame
-			// For angle calculation, we use the Y-X plane (horizontal plane)
-			double angle_rad = atan2(contact_y, contact_x);
-			double angle_deg = angle_rad * 180.0 / M_PI;
-			
-			// Normalize angle to [0, 360) degrees
-			if (angle_deg < 0) {
-				angle_deg += 360.0;
-			}
-			
-			// Publish contact angle as debug value
-			debug_value_s contact_debug{};
-			contact_debug.timestamp = hrt_absolute_time();
-			contact_debug.ind = 0;  // Index 0 for contact angle
-			contact_debug.value = static_cast<float>(angle_deg);
+					// Calculate angle relative to propeller guard center
+		// Propeller guard center is at drone position + (0, 0, 0.1) in base_link frame
+		// For angle calculation, we use the Y-X plane (horizontal plane)
+		double angle_rad = atan2(contact_y, contact_x);
+		
+		// Normalize angle to [0, 2π) radians
+		if (angle_rad < 0) {
+			angle_rad += 2.0 * M_PI;
+		}
+		
+		// Publish contact angle as debug value
+		debug_value_s contact_debug{};
+		contact_debug.timestamp = hrt_absolute_time();
+		contact_debug.ind = 0;  // Index 0 for contact angle
+		contact_debug.value = static_cast<float>(angle_rad);
 			
 			_propeller_guard_contact_pub.publish(contact_debug);
 		}
