@@ -168,7 +168,7 @@ int GZBridge::init()
 	}
 
 	// Contact sensor: /world/$WORLD/model/$MODEL/link/propeller_guard/sensor/propeller_guard_contact_sensor/contact
-	std::string contact_topic = "/world/" + _world_name + "/model/" + _model_name + 
+	std::string contact_topic = "/world/" + _world_name + "/model/" + _model_name +
 				    "/link/propeller_guard/sensor/propeller_guard_contact_sensor/contact";
 
 	if (!_node.Subscribe(contact_topic, &GZBridge::contactCallback, this)) {
@@ -282,12 +282,12 @@ void GZBridge::jointStateCallback(const gz::msgs::Model &msg)
 	// Optimized for minimal latency - fast joint lookup and data extraction
 	static const char TARGET_JOINT_NAME[] = "propeller_guard_joint";
 	static constexpr size_t TARGET_JOINT_NAME_LEN = sizeof(TARGET_JOINT_NAME) - 1;
-	
+
 	// Pre-initialize with zeros for efficiency
 	wheel_encoders_s wheel_encoders{};
 	wheel_encoders.timestamp = hrt_absolute_time();
 	wheel_encoders.wheel_angle[0] = 0.0f;
-	wheel_encoders.wheel_angle[1] = 0.0f; 
+	wheel_encoders.wheel_angle[1] = 0.0f;
 	wheel_encoders.wheel_speed[0] = 0.0f;
 	wheel_encoders.wheel_speed[1] = 0.0f;
 
@@ -296,15 +296,21 @@ void GZBridge::jointStateCallback(const gz::msgs::Model &msg)
 	for (int i = 0; i < joint_count; ++i) {
 		const auto &joint = msg.joint(i);
 		const std::string &joint_name = joint.name();
-		
+
 		// Fast string comparison - check length first, then content
-		if (joint_name.length() == TARGET_JOINT_NAME_LEN && 
+		if (joint_name.length() == TARGET_JOINT_NAME_LEN &&
 		    memcmp(joint_name.c_str(), TARGET_JOINT_NAME, TARGET_JOINT_NAME_LEN) == 0) {
-			
+
 			// Direct data extraction with minimal checks
 			if (joint.has_axis1()) {
-				wheel_encoders.wheel_angle[0] = static_cast<float>(joint.axis1().position());
-				wheel_encoders.wheel_speed[0] = static_cast<float>(joint.axis1().velocity());
+				float joint_angle = static_cast<float>(joint.axis1().position());
+				float joint_velocity = static_cast<float>(joint.axis1().velocity());
+
+				wheel_encoders.wheel_angle[0] = joint_angle;
+				wheel_encoders.wheel_speed[0] = joint_velocity;
+
+				// Store propeller guard angle for contact calculations
+				_propeller_guard_angle = joint_angle;
 			}
 			break; // Early exit - found our joint
 		}
@@ -318,17 +324,17 @@ void GZBridge::forceTorqueCallback(const gz::msgs::Wrench &msg)
 {
 	// Optimized for minimal latency - no dynamic allocations or string operations
 	static constexpr float FORCE_SCALE = 1.0f;   // Force scaling factor
-	
+
 	// Simple name identifier: "0" for force data
 	static constexpr char FORCE_NAME[10] = {'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0'};
 
 	// Extract and scale force components with minimal overhead
 	debug_vect_s force_debug{};
 	force_debug.timestamp = hrt_absolute_time();
-	
+
 	// Fast memory copy instead of strncpy
 	memcpy(force_debug.name, FORCE_NAME, sizeof(force_debug.name));
-	
+
 	// Direct assignment - compiler will optimize
 	force_debug.x = static_cast<float>(msg.force().x()) * FORCE_SCALE;
 	force_debug.y = static_cast<float>(msg.force().y()) * FORCE_SCALE;
@@ -343,31 +349,57 @@ void GZBridge::contactCallback(const gz::msgs::Contacts &msg)
 	// Process contact data and calculate direction angle
 	if (msg.contact_size() > 0) {
 		const auto &contact = msg.contact(0);  // Get first contact
-		
+
 		// Get contact position (world coordinates)
 		if (contact.position_size() > 0) {
 			const auto &contact_pos = contact.position(0);  // Position on propeller guard
-			
-			// Extract contact coordinates
-			double contact_x = contact_pos.x();
-			double contact_y = contact_pos.y();
-			
-					// Calculate angle relative to propeller guard center
-		// Propeller guard center is at drone position + (0, 0, 0.1) in base_link frame
-		// For angle calculation, we use the Y-X plane (horizontal plane)
-		double angle_rad = atan2(contact_y, contact_x);
-		
-		// Normalize angle to [0, 2π) radians
-		if (angle_rad < 0) {
-			angle_rad += 2.0 * M_PI;
-		}
-		
-		// Publish contact angle as debug value
-		debug_value_s contact_debug{};
-		contact_debug.timestamp = hrt_absolute_time();
-		contact_debug.ind = 0;  // Index 0 for contact angle
-		contact_debug.value = static_cast<float>(angle_rad);
-			
+
+			// Extract contact coordinates in world frame (ENU)
+			double contact_world_x = contact_pos.x();
+			double contact_world_y = contact_pos.y();
+
+			// Get current drone position in world frame (ENU)
+			double drone_world_x = _world_position_enu(0);  // East
+			double drone_world_y = _world_position_enu(1);  // North
+
+			// Calculate propeller guard center in world coordinates
+			// Propeller guard is at (0, 0, 0.1) relative to base_link in base_link frame
+			double guard_center_world_x = drone_world_x;
+			double guard_center_world_y = drone_world_y;
+
+			// Calculate contact position relative to propeller guard center (world frame)
+			double relative_world_x = contact_world_x - guard_center_world_x;
+			double relative_world_y = contact_world_y - guard_center_world_y;
+
+			// Transform from world frame to drone body frame
+			// First, rotate by negative drone yaw to get drone body coordinates
+			double cos_drone_yaw = cos(-_drone_yaw_angle);
+			double sin_drone_yaw = sin(-_drone_yaw_angle);
+
+			double relative_body_x = relative_world_x * cos_drone_yaw - relative_world_y * sin_drone_yaw;
+			double relative_body_y = relative_world_x * sin_drone_yaw + relative_world_y * cos_drone_yaw;
+
+			// Transform from drone body frame to propeller guard's local frame
+			// Then, rotate by negative guard angle to get guard local coordinates
+			double cos_guard_angle = cos(-_propeller_guard_angle);
+			double sin_guard_angle = sin(-_propeller_guard_angle);
+
+			double relative_local_x = relative_body_x * cos_guard_angle - relative_body_y * sin_guard_angle;
+			double relative_local_y = relative_body_x * sin_guard_angle + relative_body_y * cos_guard_angle;			// Calculate angle in propeller guard's local coordinate frame
+			// 0° = guard's local +X direction, 90° = guard's local +Y direction
+			double guard_local_angle = atan2(relative_local_y, relative_local_x);
+
+			// Normalize angle to [0, 2π) radians
+			if (guard_local_angle < 0) {
+				guard_local_angle += 2.0 * M_PI;
+			}
+
+			// Publish contact angle as debug value
+			debug_value_s contact_debug{};
+			contact_debug.timestamp = hrt_absolute_time();
+			contact_debug.ind = 0;  // Index 0 for contact angle
+			contact_debug.value = static_cast<float>(guard_local_angle);
+
 			_propeller_guard_contact_pub.publish(contact_debug);
 		}
 	}
@@ -477,6 +509,11 @@ void GZBridge::poseInfoCallback(const gz::msgs::Pose_V &msg)
 			gz::msgs::Vector3d pose_position = msg.pose(p).position();
 			gz::msgs::Quaternion pose_orientation = msg.pose(p).orientation();
 
+			// Store current world position in ENU coordinates for contact calculations
+			_world_position_enu(0) = pose_position.x();  // East
+			_world_position_enu(1) = pose_position.y();  // North
+			_world_position_enu(2) = pose_position.z();  // Up
+
 			// ground truth
 			gz::math::Quaterniond q_gr = gz::math::Quaterniond(
 							     pose_orientation.w(),
@@ -503,6 +540,12 @@ void GZBridge::poseInfoCallback(const gz::msgs::Pose_V &msg)
 			vehicle_angular_velocity_groundtruth.timestamp_sample = timestamp;
 			const matrix::Vector3f angular_velocity = (euler - _euler_prev) / dt;
 			_euler_prev = euler;
+
+			// Store drone yaw angle for contact calculations (convert NED to ENU frame)
+			// In NED frame: psi is yaw, in ENU frame we need to adjust
+			// NED yaw 0° = North, ENU yaw 0° = East, so ENU_yaw = π/2 - NED_yaw
+			_drone_yaw_angle = static_cast<float>(M_PI_2) - euler.psi();
+
 			angular_velocity.copyTo(vehicle_angular_velocity_groundtruth.xyz);
 
 			vehicle_angular_velocity_groundtruth.timestamp = timestamp;

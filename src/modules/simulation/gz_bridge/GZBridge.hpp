@@ -166,6 +166,9 @@ private:
 	matrix::Vector3d _velocity_prev{};
 	matrix::Vector3f _euler_prev{};
 	hrt_abstime _timestamp_prev{};
+	matrix::Vector3d _world_position_enu{};  // Current drone position in world ENU coordinates
+	float _propeller_guard_angle{0.0f};     // Current propeller guard joint angle in radians
+	float _drone_yaw_angle{0.0f};           // Current drone yaw angle in radians (ENU frame)
 
 	const std::string _world_name;
 	const std::string _model_name;
