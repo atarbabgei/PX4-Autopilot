@@ -618,6 +618,7 @@ CameraTrigger::Run()
 			if (cmd.param1 > 0.0f) {
 				_interval = cmd.param1;
 				param_set_no_notification(_p_interval, &(_interval));
+				update_intervalometer();
 			}
 
 			// We can only control the shutter integration time of the camera in GPIO mode
@@ -819,6 +820,10 @@ CameraTrigger::engage(void *arg)
 
 	// Trigger the camera
 	trig->_camera_interface->trigger(true);
+
+	// Capture timestamp immediately after GPIO fires for best accuracy
+	const hrt_abstime trigger_timestamp = hrt_absolute_time();
+
 	// set last timestamp
 	trig->_last_trigger_timestamp = now;
 
@@ -851,7 +856,7 @@ CameraTrigger::engage(void *arg)
 
 	trigger.seq = trig->_trigger_seq;
 	trigger.feedback = false;
-	trigger.timestamp = hrt_absolute_time();
+	trigger.timestamp = trigger_timestamp;
 
 	orb_publish(ORB_ID(camera_trigger), trig->_trigger_pub, &trigger);
 
