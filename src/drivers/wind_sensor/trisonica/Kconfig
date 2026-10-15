@@ -1,0 +1,5 @@
+menuconfig DRIVERS_WIND_SENSOR_TRISONICA
+	bool "trisonica"
+	default n
+	---help---
+		Enable support for the LI-COR LI-550 TriSonica ultrasonic anemometer (serial)

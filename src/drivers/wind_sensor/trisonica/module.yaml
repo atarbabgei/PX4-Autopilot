@@ -1,0 +1,37 @@
+module_name: LI-550 TriSonica Anemometer (serial)
+serial_config:
+    - command: trisonica start -d ${SERIAL_DEV}
+      port_config_param:
+        name: SENS_TRSNC_CFG
+        group: Sensors
+
+parameters:
+    - group: Sensors
+      definitions:
+        SENS_TRSNC_RATE:
+            description:
+                short: TriSonica output rate
+                long: |
+                    Output rate requested from the anemometer when SENS_TRSNC_SETUP is enabled.
+                    Applied on every (re)connection, not saved to the instrument flash.
+            type: enum
+            values:
+                1: 1 Hz
+                2: 2 Hz
+                5: 5 Hz
+                10: 10 Hz
+                20: 20 Hz
+                40: 40 Hz
+            default: 10
+            reboot_required: true
+        SENS_TRSNC_SETUP:
+            description:
+                short: Apply TriSonica streaming profile on startup
+                long: |
+                    If enabled, the driver configures the instrument on every (re)connection:
+                    SI units, space delimiters, orientuv std, tagged U/V/W/S2D/D/T fields
+                    (all other fields hidden) and SENS_TRSNC_RATE. Nothing is saved to flash.
+                    If disabled, the existing instrument configuration is only read.
+            type: boolean
+            default: 1
+            reboot_required: true

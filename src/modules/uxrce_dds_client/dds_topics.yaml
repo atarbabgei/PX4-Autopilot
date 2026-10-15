@@ -74,6 +74,9 @@ publications:
   - topic: /fmu/out/airspeed_validated
     type: px4_msgs::msg::AirspeedValidated
 
+  - topic: /fmu/out/sensor_airflow
+    type: px4_msgs::msg::SensorAirflow
+
   - topic: /fmu/out/vtol_vehicle_status
     type: px4_msgs::msg::VtolVehicleStatus
 
