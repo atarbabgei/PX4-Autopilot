@@ -12,4 +12,4 @@ int16[32] x               # acceleration in the FRD board frame X-axis in m/s^2
 int16[32] y               # acceleration in the FRD board frame Y-axis in m/s^2
 int16[32] z               # acceleration in the FRD board frame Z-axis in m/s^2
 
-uint8 ORB_QUEUE_LENGTH = 4
+uint8 ORB_QUEUE_LENGTH = 8
