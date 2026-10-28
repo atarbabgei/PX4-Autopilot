@@ -47,6 +47,14 @@ publications:
   - topic: /fmu/out/vehicle_imu_status
     type: px4_msgs::msg::VehicleImuStatus
 
+  # Raw IMU FIFO samples (instance 0): timestamp_sample is the first sample,
+  # each following sample is dt microseconds later.
+  - topic: /fmu/out/sensor_gyro_fifo
+    type: px4_msgs::msg::SensorGyroFifo
+
+  - topic: /fmu/out/sensor_accel_fifo
+    type: px4_msgs::msg::SensorAccelFifo
+
   #- topic: /fmu/out/timesync_status
   #  type: px4_msgs::msg::TimesyncStatus
 
