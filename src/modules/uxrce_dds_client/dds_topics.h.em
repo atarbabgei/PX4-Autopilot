@@ -66,6 +66,7 @@ struct SendSubscription {
 	uint32_t message_version;
 	uint32_t topic_size;
 	UcdrSerializeMethod ucdr_serialize_method;
+	bool no_rate_limit; // send every queued message instead of at most one per UXRCE_DEFAULT_POLL_RATE
 };
 
 // Subscribers for messages to send
@@ -79,6 +80,7 @@ struct SendTopicsSubs {
 			  get_message_version<@(pub['simple_base_type'])_s>(),
 			  ucdr_topic_size_@(pub['simple_base_type'])(),
 			  &ucdr_serialize_@(pub['simple_base_type']),
+			  @('true' if pub.get('no_rate_limit', False) else 'false'),
 			},
 @[    end for]@
 	};
@@ -98,7 +100,7 @@ bool SendTopicsSubs::init(uxrSession *session, uxrStreamId reliable_out_stream_i
 		if (fds[idx].events == 0) {
 			fds[idx].fd = orb_subscribe(send_subscriptions[idx].orb_meta);
 			fds[idx].events = POLLIN;
-			orb_set_interval(fds[idx].fd, UXRCE_DEFAULT_POLL_RATE);
+			orb_set_interval(fds[idx].fd, send_subscriptions[idx].no_rate_limit ? 0 : UXRCE_DEFAULT_POLL_RATE);
 		}
 
 		if (!create_data_writer(session, reliable_out_stream_id, participant_id, static_cast<ORB_ID>(send_subscriptions[idx].orb_meta->o_id), client_namespace, send_subscriptions[idx].topic,
@@ -128,27 +130,37 @@ void SendTopicsSubs::update(uxrSession *session, uxrStreamId reliable_out_stream
 
 	for (unsigned idx = 0; idx < sizeof(send_subscriptions)/sizeof(send_subscriptions[0]); ++idx) {
 		if (fds[idx].revents & POLLIN) {
-			// Topic updated, copy data and send
-			orb_copy(send_subscriptions[idx].orb_meta, fds[idx].fd, &topic_data);
+			// Topic updated, copy data and send. Topics with no_rate_limit send every
+			// queued message (e.g. IMU FIFO), the others only the latest one.
+			bool updated = true;
 
-			if (send_subscriptions[idx].data_writer.id != UXR_INVALID_ID) {
+			for (int n = 0; updated && n < 8; n++) {
+				orb_copy(send_subscriptions[idx].orb_meta, fds[idx].fd, &topic_data);
 
-				ucdrBuffer ub;
-				uint32_t topic_size = send_subscriptions[idx].topic_size;
-				if (uxr_prepare_output_stream(session, best_effort_stream_id, send_subscriptions[idx].data_writer, &ub, topic_size) != UXR_INVALID_REQUEST_ID) {
-					send_subscriptions[idx].ucdr_serialize_method(&topic_data, ub, time_offset_us);
-					// TODO: fill up the MTU and then flush, which reduces the packet overhead
-					uxr_flash_output_streams(session);
-					num_payload_sent += topic_size;
+				if (send_subscriptions[idx].data_writer.id != UXR_INVALID_ID) {
+
+					ucdrBuffer ub;
+					uint32_t topic_size = send_subscriptions[idx].topic_size;
+					if (uxr_prepare_output_stream(session, best_effort_stream_id, send_subscriptions[idx].data_writer, &ub, topic_size) != UXR_INVALID_REQUEST_ID) {
+						send_subscriptions[idx].ucdr_serialize_method(&topic_data, ub, time_offset_us);
+						// TODO: fill up the MTU and then flush, which reduces the packet overhead
+						uxr_flash_output_streams(session);
+						num_payload_sent += topic_size;
+
+					} else {
+						//PX4_ERR("Error uxr_prepare_output_stream UXR_INVALID_REQUEST_ID %s", send_subscriptions[idx].subscription.get_topic()->o_name);
+					}
 
 				} else {
-					//PX4_ERR("Error uxr_prepare_output_stream UXR_INVALID_REQUEST_ID %s", send_subscriptions[idx].subscription.get_topic()->o_name);
+					//PX4_ERR("Error UXR_INVALID_ID %s", send_subscriptions[idx].subscription.get_topic()->o_name);
 				}
 
-			} else {
-				//PX4_ERR("Error UXR_INVALID_ID %s", send_subscriptions[idx].subscription.get_topic()->o_name);
-			}
+				updated = false;
 
+				if (send_subscriptions[idx].no_rate_limit) {
+					orb_check(fds[idx].fd, &updated);
+				}
+			}
 		}
 	}
 }

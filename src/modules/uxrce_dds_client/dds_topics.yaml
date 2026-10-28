@@ -48,12 +48,16 @@ publications:
     type: px4_msgs::msg::VehicleImuStatus
 
   # Raw IMU FIFO samples (instance 0): timestamp_sample is the first sample,
-  # each following sample is dt microseconds later.
+  # each following sample is dt microseconds later. no_rate_limit sends every
+  # message (800 Hz with IMU_GYRO_RATEMAX 800) instead of at most one per
+  # UXRCE_DEFAULT_POLL_RATE, so no samples are dropped.
   - topic: /fmu/out/sensor_gyro_fifo
     type: px4_msgs::msg::SensorGyroFifo
+    no_rate_limit: true
 
   - topic: /fmu/out/sensor_accel_fifo
     type: px4_msgs::msg::SensorAccelFifo
+    no_rate_limit: true
 
   #- topic: /fmu/out/timesync_status
   #  type: px4_msgs::msg::TimesyncStatus
