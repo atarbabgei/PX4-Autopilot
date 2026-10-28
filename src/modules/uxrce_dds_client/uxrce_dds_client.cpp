@@ -694,8 +694,11 @@ void UxrceddsClient::run()
 			// check if there are available replies
 			process_replies();
 
-			// time sync session
-			if (_synchronize_timestamps && hrt_elapsed_time(&last_sync_session) > 1_s) {
+			// time sync session: 10 Hz instead of 1 Hz. The Timesync filter gain is per
+			// sample (ALPHA_GAIN_FINAL 0.003), so this shortens its time constant from
+			// ~5.5 min to ~33 s and the offset follows clock corrections on the agent
+			// computer (NTP slewing) much more closely.
+			if (_synchronize_timestamps && hrt_elapsed_time(&last_sync_session) > 100_ms) {
 
 				if (uxr_sync_session(&session, 10) && _timesync.sync_converged()) {
 					//PX4_INFO("synchronized with time offset %-5" PRId64 "ns", session.time_offset);
