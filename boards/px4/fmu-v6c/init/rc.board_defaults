@@ -9,3 +9,9 @@ param set-default BAT2_V_DIV 18.1
 
 param set-default BAT1_A_PER_V 36.367515152
 param set-default BAT2_A_PER_V 36.367515152
+
+# LI-550 TriSonica anemometer on TELEM3 (/dev/ttyS1, driver fixed at 115200 8N1)
+param set-default SENS_TRSNC_CFG 103
+
+# ROS 2 link: uXRCE-DDS client on TELEM2 (/dev/ttyS3), SER_TEL2_BAUD defaults to 921600
+param set-default UXRCE_DDS_CFG 102
